@@ -1,6 +1,6 @@
 # Lernspiele
 
-Kleine Lernspiele für die Grundschule. Sie laufen im Browser, ohne Anmeldung, ohne Build-Schritt und ohne externe Server.
+Kleine Lernspiele für Grundschule und Unterstufe. Sie laufen im Browser, ohne Anmeldung, ohne Build-Schritt und ohne externe Server.
 
 **Spielen:** https://timosachsenberg.github.io/lernspiele/
 
@@ -9,6 +9,7 @@ Kleine Lernspiele für die Grundschule. Sie laufen im Browser, ohne Anmeldung, o
 | Spiel | Klasse | Fach | Inhalt |
 |---|---|---|---|
 | [Ohne Bremse](spiele/ohne-bremse/) | 3 | Mathe | Kopfrechnen: Plus und Minus bis 100 und bis 1000, Einmaleins, Geteilt, gemischt. Der Zug hat keine Bremse; wer richtig rechnet, stellt die Weiche auf den richtigen Tunnel. Bei der falschen Weiche gibt es einen lustigen Unfall. |
+| [Vokabel-Jagd](spiele/vokabel-jagd/) | 5 | Englisch | Englisch-Vokabeln (Gymnasium, 1. Lernjahr) mit Karteikarten, Quiz, Hören, Paare finden, Buchstabieren und Wortliste. Sterne und Tier-Sticker als Belohnung; der Fortschritt bleibt im Browser des Geräts gespeichert. |
 
 ## Aufbau
 
@@ -39,4 +40,4 @@ Dann http://localhost:8000 öffnen.
 
 ## Lizenzen
 
-Die Schriften Bungee und Nunito stehen unter der SIL Open Font License 1.1 (siehe `fonts/LICENSE-*.txt`).
+Die Schriften Bungee, Nunito und Baloo 2 stehen unter der SIL Open Font License 1.1 (siehe `fonts/LICENSE-*.txt`).

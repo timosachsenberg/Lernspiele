@@ -1,6 +1,10 @@
 /* Selbst gehostete Schriften (SIL Open Font License 1.1, siehe LICENSE-*.txt).
-   Quelle: Fontsource (@fontsource/bungee 5.3.0, @fontsource/nunito 5.3.0), Latin-Subset. */
+   Quelle: Fontsource (@fontsource/bungee 5.3.0, @fontsource/nunito 5.3.0, @fontsource/baloo-2 5.3.0), Latin-Subset. */
 @font-face{font-family:'Bungee';font-style:normal;font-weight:400;font-display:swap;src:url('bungee-latin-400-normal.woff2') format('woff2')}
+@font-face{font-family:'Nunito';font-style:normal;font-weight:500;font-display:swap;src:url('nunito-latin-500-normal.woff2') format('woff2')}
 @font-face{font-family:'Nunito';font-style:normal;font-weight:700;font-display:swap;src:url('nunito-latin-700-normal.woff2') format('woff2')}
 @font-face{font-family:'Nunito';font-style:normal;font-weight:800;font-display:swap;src:url('nunito-latin-800-normal.woff2') format('woff2')}
 @font-face{font-family:'Nunito';font-style:normal;font-weight:900;font-display:swap;src:url('nunito-latin-900-normal.woff2') format('woff2')}
+@font-face{font-family:'Baloo 2';font-style:normal;font-weight:500;font-display:swap;src:url('baloo-2-latin-500-normal.woff2') format('woff2')}
+@font-face{font-family:'Baloo 2';font-style:normal;font-weight:700;font-display:swap;src:url('baloo-2-latin-700-normal.woff2') format('woff2')}
+@font-face{font-family:'Baloo 2';font-style:normal;font-weight:800;font-display:swap;src:url('baloo-2-latin-800-normal.woff2') format('woff2')}
