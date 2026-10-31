@@ -2,7 +2,7 @@
 
 Kleine Lernspiele für Grundschule und Unterstufe. Sie laufen im Browser, ohne Anmeldung, ohne Build-Schritt und ohne externe Server.
 
-**Spielen:** https://timosachsenberg.github.io/lernspiele/
+**Spielen:** https://timosachsenberg.github.io/Lernspiele/
 
 ## Spiele
 
