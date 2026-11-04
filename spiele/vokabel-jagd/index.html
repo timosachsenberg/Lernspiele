@@ -242,7 +242,7 @@ h1, h2, h3 { font-family: var(--display); line-height: 1.1; margin: 0; text-wrap
 canvas#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 20; width: 100%; height: 100%; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 /* Link zurück zur Auswahlseite */
-.backbar { max-width: 760px; margin: 0 auto; padding-top: 14px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.backbar { max-width: 760px; margin: 0 auto; padding-top: 14px; display: flex; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 .homelink { color: var(--muted); font-weight: 800; font-size: 15px; text-decoration: none; border-bottom: 2px solid var(--line); padding-bottom: 2px; }
 .homelink:hover { color: var(--ink); }
 .homelink:focus-visible { outline: 3px solid var(--sky); outline-offset: 3px; border-radius: 6px; }
@@ -251,7 +251,7 @@ canvas#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 20; 
 <body>
 
 <canvas id="confetti" hidden></canvas>
-<nav class="backbar"><a class="homelink" href="../../">← Alle Lernspiele</a></nav>
+<nav class="backbar"><a class="homelink" href="../../">← Alle Lernspiele</a><a class="homelink" href="../../datenschutz.html">Impressum &amp; Datenschutz</a></nav>
 <main class="wrap" id="app"></main>
 
 <script>
@@ -398,15 +398,23 @@ const stickerCount = () => Math.min(ANIMALS.length, Math.floor(S.stars / STARS_P
 
 /* ---------- Aussprache ---------- */
 const canSpeak = "speechSynthesis" in window;
-let voice = null;
+/* Datenschutz: Es werden nur Stimmen genutzt, die auf dem Gerät laufen (localService).
+   Online-Stimmen (z. B. die „Google“-Stimmen in Chrome) schicken den Text an den Browser-Hersteller;
+   die gibt es nur, wenn das ausdrücklich erlaubt wurde, und nur bis zum Neuladen der Seite. */
+let voice = null, voicesLoaded = false, onlineVoiceOK = false;
 function findVoice() {
   if (!canSpeak) return;
   const vs = speechSynthesis.getVoices();
-  voice = vs.find(v => v.lang === "en-GB") || vs.find(v => /^en[-_]GB/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || null;
+  if (vs.length) voicesLoaded = true;
+  const en = vs.filter(v => /^en/i.test(v.lang));
+  const best = list => list.find(v => /^en[-_]GB/i.test(v.lang)) || list[0] || null;
+  voice = best(en.filter(v => v.localService)) || (onlineVoiceOK ? best(en) : null);
 }
-if (canSpeak) { findVoice(); speechSynthesis.onvoiceschanged = findVoice; }
+if (canSpeak) { findVoice(); speechSynthesis.onvoiceschanged = () => { const had = !!voice; findVoice(); if (!G && !had && $app.querySelector(".modes")) home(); }; }
 function speak(text, rate) {
   if (!canSpeak) return;
+  if (!voice) findVoice();
+  if (!voice) return;
   const t = text.replace(/…/g, " ").replace(/\s+/g, " ").trim();
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(t);
@@ -488,7 +496,11 @@ function home() {
     <button class="toggle" data-dir="de" aria-pressed="${S.dir === "de"}">🇩🇪 → 🇬🇧</button>
     <button class="toggle" id="slow" aria-pressed="${S.slow}">🐢 Langsam sprechen</button>
   </section>
-  ${canSpeak ? "" : `<p class="note">Dieser Browser kann leider nicht vorlesen. Die Spiele funktionieren trotzdem.</p>`}
+  ${!canSpeak ? `<p class="note">Dieser Browser kann leider nicht vorlesen. Die Spiele funktionieren trotzdem.</p>`
+    : voicesLoaded && !voice ? `<section class="panel" style="display:flex;flex-direction:column;gap:10px">
+      <b>Auf diesem Gerät ist keine englische Stimme installiert.</b>
+      <span class="note">Der Browser hat nur eine Online-Stimme. Dafür schickt er jedes vorgelesene Wort an seinen Hersteller (bei Chrome an Google). Für Eltern: Mehr dazu unter <a href="../../datenschutz.html">Datenschutz</a>.</span>
+      <div><button class="btn ghost" id="onlineVoice">Online-Stimme verwenden</button></div></section>` : ""}
   <section class="panel" style="display:flex;flex-direction:column;gap:12px">
     <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline">
       <h2 style="font-size:26px">My favourite animals</h2>
@@ -506,12 +518,15 @@ function home() {
   $app.querySelector("#slow").onclick = () => { S.slow = !S.slow; save(); home(); speak("Hello!"); };
   $app.querySelectorAll("[data-animal]").forEach(b => b.onclick = () => { const a = ANIMALS[+b.dataset.animal]; speak("a " + a[1]); });
   $app.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => start(b.dataset.mode));
+  const ov = $app.querySelector("#onlineVoice");
+  if (ov) ov.onclick = () => { onlineVoiceOK = true; findVoice(); home(); speak("Hello!"); };
 }
 
 /* ---------- Spielrahmen ---------- */
 function start(mode) {
   if (mode === "list") return wordList();
   if (mode === "talk" && !canListen) return noListen();
+  if (mode === "talk" && !listenMode) return listenGate();
   G = { mode, i: 0, results: [], earned: 0, newSticker: false };
   if (mode === "cards") { G.items = pick(10); }
   if (mode === "quiz" || mode === "listen") { G.items = pick(10); }
@@ -708,6 +723,62 @@ function spellRound() {
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const canListen = !!SR;
 let rec = null;
+/* Datenschutz: Zuerst wird versucht, die Sprache auf dem Gerät zu erkennen (processLocally, Chrome ab 139).
+   Dann verlässt keine Aufnahme das Gerät. Geht das nicht, nutzt der Browser einen Online-Dienst seines
+   Herstellers; das passiert nur nach ausdrücklicher Zustimmung und nur bis zum Neuladen der Seite. */
+let listenMode = null;            /* { local: true|false, lang } */
+const LOCAL_LANGS = ["en-GB", "en-US"];
+async function localSpeech() {
+  if (typeof SR.available !== "function") return null;
+  let later = null;
+  for (const lang of LOCAL_LANGS) {
+    try {
+      const a = await SR.available({ langs: [lang], processLocally: true });
+      if (a === "available") return { lang, state: a };
+      if (!later && (a === "downloadable" || a === "downloading")) later = { lang, state: a };
+    } catch (e) {}
+  }
+  return later;
+}
+function gateFrame(inner) {
+  G = null; stopListening();
+  $app.innerHTML = `<div class="gamebar"><button class="back" id="back">← Übersicht</button><div style="flex:1"></div><div class="starbox" id="stars">★ ${S.stars}</div></div>
+    <section class="panel result">${inner}</section>`;
+  $app.querySelector("#back").onclick = home;
+}
+function listenOnline() {
+  gateFrame(`<span class="big" aria-hidden="true">🎤</span><h2>Kurz fragen: Mama, Papa?</h2>
+    <p style="margin:0;max-width:36em">Auf diesem Gerät kann der Browser Sprache nur mit einem <b>Online-Dienst</b> erkennen.
+    Wenn du aufs Mikrofon tippst, schickt der Browser die Aufnahme an seinen Hersteller (bei Chrome an Google, bei Edge an Microsoft, bei Safari an Apple).
+    Diese Seite selbst speichert und verschickt keine Aufnahmen.</p>
+    <p class="note" style="margin:0">Für Eltern: Mehr dazu unter <a href="../../datenschutz.html">Datenschutz</a>. Die Erlaubnis gilt nur, bis die Seite neu geladen wird.</p>
+    <div class="actions"><button class="btn ghost" id="no">Lieber nicht</button><button class="btn" id="yes">Einverstanden</button></div>`);
+  $app.querySelector("#no").onclick = home;
+  $app.querySelector("#yes").onclick = () => { listenMode = { local: false, lang: "en-GB" }; start("talk"); };
+}
+async function listenGate() {
+  gateFrame(`<span class="big" aria-hidden="true">🎤</span><h2>Einen Moment …</h2><p style="margin:0">Ich schaue, ob dein Gerät Sprache selbst erkennen kann.</p>`);
+  const loc = await localSpeech();
+  if (G || !$app.querySelector(".result")) return;         /* inzwischen woanders hin getippt */
+  if (loc && loc.state === "available") { listenMode = { local: true, lang: loc.lang }; return start("talk"); }
+  if (!loc) return listenOnline();
+  gateFrame(`<span class="big" aria-hidden="true">🎤</span><h2>Einmal das Sprachpaket laden</h2>
+    <p style="margin:0;max-width:36em">Dein Browser kann Sprache auch <b>direkt auf diesem Gerät</b> erkennen. Dann geht keine Aufnahme ins Internet.
+    Dafür braucht er einmalig ein Sprachpaket für Englisch.</p>
+    <p class="note" id="inote" style="margin:0" aria-live="polite"></p>
+    <div class="actions"><button class="btn ghost" id="online">Ohne Sprachpaket</button><button class="btn" id="inst">Sprachpaket laden</button></div>`);
+  $app.querySelector("#online").onclick = listenOnline;
+  $app.querySelector("#inst").onclick = async e => {
+    const b = e.currentTarget, note = $app.querySelector("#inote");
+    b.disabled = true; note.textContent = "Wird geladen … das kann eine Weile dauern.";
+    let ok = false;
+    try { ok = await SR.install({ langs: [loc.lang], processLocally: true }); } catch (err) { ok = false; }
+    if (!$app.querySelector("#inote")) return;
+    const again = ok ? await localSpeech() : null;
+    if (again && again.state === "available") { listenMode = { local: true, lang: again.lang }; return start("talk"); }
+    b.disabled = false; note.textContent = "Das Sprachpaket ließ sich nicht laden. Versuch es später nochmal oder nimm „Ohne Sprachpaket“.";
+  };
+}
 function stopListening() {
   if (!rec) return;
   const r = rec; rec = null;
@@ -783,7 +854,8 @@ const MIC_ERR = {
   "service-not-allowed": "Die Spracherkennung ist ausgeschaltet. Auf iPhone und iPad muss dafür Siri eingeschaltet sein.",
   "audio-capture": "Ich finde kein Mikrofon. Ist eins angeschlossen?",
   "network": "Für die Spracherkennung braucht der Browser Internet. Bist du online?",
-  "no-speech": "Ich habe nichts gehört. Tippe aufs Mikrofon und sprich laut und deutlich."
+  "no-speech": "Ich habe nichts gehört. Tippe aufs Mikrofon und sprich laut und deutlich.",
+  "language-not-supported": "Das Sprachpaket fehlt noch. Geh zur Übersicht und starte „Sprich mit!“ nochmal."
 };
 function talkRound() {
   const w = G.items[G.i];
@@ -796,6 +868,7 @@ function talkRound() {
       <button class="say" id="say">${en ? "🔊 Vorsprechen" : "💡 Hilfe: anhören"}</button></div>
     <div class="actions"><button class="mic" id="mic" aria-label="Mikrofon: jetzt sprechen"><span aria-hidden="true">🎤</span></button></div>
     <div class="micnote" id="note" aria-live="polite">Tippe aufs Mikrofon und sag es laut.</div>
+    <div class="note" style="text-align:center">${listenMode.local ? "🔒 Deine Stimme bleibt auf diesem Gerät." : "Die Aufnahme geht zur Erkennung an den Browser-Hersteller."}</div>
     <div class="heard" id="heard"></div>
     <div class="feedback" id="fb" aria-live="polite"></div>
     <div class="actions"><button class="btn ghost" id="skip">Überspringen</button><button class="btn" id="go" hidden>Weiter →</button></div>`);
@@ -841,7 +914,7 @@ function talkRound() {
     if (rec) { stopListening(); mic.classList.remove("on"); note.textContent = "Tippe aufs Mikrofon und sag es laut."; return; }
     if (canSpeak) speechSynthesis.cancel();
     const r = new SR();
-    r.lang = "en-GB"; r.interimResults = false; r.continuous = false; r.maxAlternatives = 5;
+    r.lang = listenMode.lang; if (listenMode.local) r.processLocally = true; r.interimResults = false; r.continuous = false; r.maxAlternatives = 5;
     let got = false, failed = false;
     r.onresult = e => {
       got = true;
@@ -852,6 +925,7 @@ function talkRound() {
     r.onerror = e => {
       if (e.error === "aborted") return;
       failed = true;
+      if (e.error === "language-not-supported") listenMode = null;
       note.textContent = MIC_ERR[e.error] || "Das hat nicht geklappt. Versuch es nochmal.";
     };
     r.onend = () => {
