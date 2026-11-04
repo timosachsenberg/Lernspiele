@@ -9,7 +9,7 @@ Kleine Lernspiele für Grundschule und Unterstufe. Sie laufen im Browser, ohne A
 | Spiel | Klasse | Fach | Inhalt |
 |---|---|---|---|
 | [Ohne Bremse](spiele/ohne-bremse/) | 3 | Mathe | Kopfrechnen: Plus und Minus bis 100 und bis 1000, Einmaleins, Geteilt, gemischt. Der Zug hat keine Bremse; wer richtig rechnet, stellt die Weiche auf den richtigen Tunnel. Bei der falschen Weiche gibt es einen lustigen Unfall. |
-| [Vokabel-Jagd](spiele/vokabel-jagd/) | 5 | Englisch | Englisch-Vokabeln (Gymnasium, 1. Lernjahr) mit Karteikarten, Quiz, Hören, Paare finden, Buchstabieren und Wortliste. Sterne und Tier-Sticker als Belohnung; der Fortschritt bleibt im Browser des Geräts gespeichert. |
+| [Vokabel-Jagd](spiele/vokabel-jagd/) | 5 | Englisch | Englisch-Vokabeln (Gymnasium, 1. Lernjahr) mit Karteikarten, Quiz, Hören, Sprechen (Aussprache-Check per Mikrofon), Paare finden, Buchstabieren und Wortliste. Sterne und Tier-Sticker als Belohnung; der Fortschritt bleibt im Browser des Geräts gespeichert. |
 
 ## Aufbau
 
@@ -21,6 +21,8 @@ fonts/                     selbst gehostete Schriften (SIL OFL 1.1)
 ```
 
 Jedes Spiel ist eine einzelne HTML-Datei mit eingebettetem CSS und JavaScript. Die Seiten laden nichts von fremden Servern; die Schriften liegen im Repo, damit keine Daten an Dritte gehen.
+
+Ausnahme: Der Modus „Sprich mit!“ in der Vokabel-Jagd nutzt die Spracherkennung des Browsers. Chrome und Edge schicken die Aufnahme dafür an Google bzw. Microsoft, Safari an Apple. Das Mikrofon läuft nur, solange man aufs Mikrofon getippt hat. Firefox unterstützt den Modus nicht.
 
 ## Neues Spiel hinzufügen
 

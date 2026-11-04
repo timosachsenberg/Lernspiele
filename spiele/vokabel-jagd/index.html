@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Englisch-Vokabeln für die 5. Klasse: Karteikarten, Quiz, Hören, Paare finden und Buchstabieren. Mit Sternen und Tier-Stickern.">
+<meta name="description" content="Englisch-Vokabeln für die 5. Klasse: Karteikarten, Quiz, Hören, Sprechen, Paare finden und Buchstabieren. Mit Sternen und Tier-Stickern.">
 <meta property="og:title" content="Vokabel-Jagd">
 <meta property="og:description" content="Englisch-Vokabeln für die 5. Klasse üben, mit Sternen und Tier-Stickern.">
 <meta property="og:image" content="vorschau.png">
@@ -208,6 +208,19 @@ h1, h2, h3 { font-family: var(--display); line-height: 1.1; margin: 0; text-wrap
 .spell { width: 100%; font: 800 26px var(--body); padding: 12px 16px; border-radius: 14px; border: 3px solid var(--line); background: var(--card); color: var(--ink); text-align: center; }
 .spell.ok { border-color: var(--leaf); }
 .spell.no { border-color: var(--berry); animation: shake .35s; }
+
+/* Sprich mit! */
+.mic {
+  width: 112px; height: 112px; border-radius: 50%; border: 4px solid var(--card); background: var(--berry); color: var(--card);
+  font-size: 50px; line-height: 1; box-shadow: var(--shadow); display: grid; place-items: center; transition: transform .12s;
+}
+.mic:hover:not(:disabled) { transform: scale(1.05); }
+.mic.on { background: var(--leaf); animation: pulse 1.1s ease-out infinite; }
+.mic:disabled { opacity: .4; cursor: default; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(35,147,93,.55); } 100% { box-shadow: 0 0 0 24px rgba(35,147,93,0); } }
+.micnote { text-align: center; color: var(--muted); font-weight: 700; min-height: 24px; }
+.heard { text-align: center; font-weight: 700; color: var(--muted); min-height: 24px; overflow-wrap: anywhere; }
+.heard b { color: var(--ink); }
 
 /* Ende */
 .result { text-align: center; display: flex; flex-direction: column; gap: 12px; align-items: center; }
@@ -439,6 +452,7 @@ const MODES = [
   { id: "cards", ic: "🃏", name: "Karteikarten", text: "Karte umdrehen und sagen, ob du es wusstest." },
   { id: "quiz", ic: "🎯", name: "Quiz", text: "Wähle die richtige Übersetzung." },
   { id: "listen", ic: "👂", name: "Hör genau hin", text: "Hör zu und tippe das Wort an, das du hörst." },
+  { id: "talk", ic: "🎤", name: "Sprich mit!", text: "Sag das Wort laut. Versteht dich der Computer?" },
   { id: "match", ic: "🧩", name: "Paare finden", text: "Verbinde Englisch und Deutsch." },
   { id: "spell", ic: "✏️", name: "Buchstabieren", text: "Schreib das englische Wort richtig." },
   { id: "list", ic: "📒", name: "Wortliste", text: "Alle Wörter ansehen und anhören." }
@@ -451,7 +465,7 @@ function header() {
 }
 
 function home() {
-  G = null;
+  G = null; stopListening();
   const all = pool(), sure = all.filter(w => box(w) >= 3).length;
   const n = stickerCount();
   const toNext = STARS_PER_STICKER - (S.stars % STARS_PER_STICKER);
@@ -497,15 +511,18 @@ function home() {
 /* ---------- Spielrahmen ---------- */
 function start(mode) {
   if (mode === "list") return wordList();
+  if (mode === "talk" && !canListen) return noListen();
   G = { mode, i: 0, results: [], earned: 0, newSticker: false };
   if (mode === "cards") { G.items = pick(10); }
   if (mode === "quiz" || mode === "listen") { G.items = pick(10); }
+  if (mode === "talk") { G.items = pick(8); }
   if (mode === "spell") { G.items = pick(8, pool().filter(w => w.en.length <= 22)); if (G.items.length < 3) G.items = pick(8, WORDS.filter(w => w.en.length <= 22)); }
   if (mode === "match") { G.items = [0, 1, 2]; }
   G.total = G.items.length;
   next();
 }
 function frame(inner) {
+  stopListening();
   const dots = Array.from({ length: G.total }, (_, k) => `<i class="${G.results[k] === true ? "ok" : G.results[k] === false ? "no" : k === G.i ? "now" : ""}"></i>`).join("");
   $app.innerHTML = `<div class="gamebar"><button class="back" id="back">← Übersicht</button><div class="dots" aria-label="Fortschritt">${dots}</div>
     <div class="starbox" id="stars">★ ${S.stars}</div></div><section class="stage">${inner}</section>`;
@@ -513,7 +530,7 @@ function frame(inner) {
 }
 function next() {
   if (G.i >= G.total) return finish();
-  ({ cards: cardRound, quiz: quizRound, listen: listenRound, match: matchRound, spell: spellRound })[G.mode]();
+  ({ cards: cardRound, quiz: quizRound, listen: listenRound, talk: talkRound, match: matchRound, spell: spellRound })[G.mode]();
 }
 function done(ok) { G.results[G.i] = ok; G.i++; }
 
@@ -687,8 +704,172 @@ function spellRound() {
   };
 }
 
+/* ---------- Sprich mit! (Spracherkennung des Browsers) ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const canListen = !!SR;
+let rec = null;
+function stopListening() {
+  if (!rec) return;
+  const r = rec; rec = null;
+  r.onresult = r.onerror = r.onend = null;
+  try { r.abort(); } catch (e) {}
+}
+/* Wörter, die gleich klingen, zählen als gleich (die Erkennung schreibt z. B. "two" statt "too") */
+const SOUNDS_SAME = [
+  ["too", "two", "to", "2"], ["for", "four", "fore", "4"], ["are", "r"], ["right", "write", "rite"],
+  ["son", "sun"], ["here", "hear"], ["new", "knew"], ["okay", "ok"], ["mum", "mom", "mam", "mummy"],
+  ["mr", "mister"], ["mrs", "missus", "misses", "missis"], ["favourite", "favorite"], ["why", "y"],
+  ["i", "eye"], ["be", "bee"], ["one", "won", "1"], ["no", "know"], ["in", "inn"], ["hi", "hiya"],
+  ["grandma", "granma", "grandmother"], ["grandpa", "granpa", "grandfather"], ["dad", "daddy"],
+  ["inline", "in line"], ["mobile", "mobil"]
+];
+const SAME_MAP = {};
+SOUNDS_SAME.forEach(g => g.forEach(x => { if (!x.includes(" ")) SAME_MAP[x] = g[0]; }));
+function canon(s) {
+  s = String(s).toLowerCase().replace(/[’`´]/g, "'").replace(/…|\.\.\./g, " ");
+  s = s.replace(/\blet's\b/g, "let us").replace(/n't\b/g, " not").replace(/'re\b/g, " are").replace(/'m\b/g, " am")
+       .replace(/'s\b/g, " is").replace(/'ll\b/g, " will").replace(/'ve\b/g, " have");
+  s = s.replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  return s ? s.split(" ").map(x => SAME_MAP[x] || x).join(" ") : "";
+}
+function lev(a, b) {
+  const d = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = d[0]; d[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const t = d[j];
+      d[j] = Math.min(d[j] + 1, d[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = t;
+    }
+  }
+  return d[b.length];
+}
+/* 1 = genau getroffen, 0 = ganz anders (Vergleich der Buchstaben, Leerzeichen egal) */
+function sim(a, b) {
+  a = a.replace(/ /g, ""); b = b.replace(/ /g, "");
+  if (!a || !b) return 0;
+  return 1 - lev(a, b) / Math.max(a.length, b.length);
+}
+/* Vergleicht das Zielwort mit allem, was die Erkennung verstanden haben könnte.
+   Ein Treffer zählt auch, wenn das Wort in einem längeren Satz steckt ("the kitchen", "I like pizza"). */
+function judgeSpeech(target, alts) {
+  const t0 = canon(target), targets = [t0];
+  /* "picture" reicht für "a picture", "bring" für "to bring" */
+  const short = t0.replace(/^(a|an|the|too) (?=\S)/, "");
+  if (short !== t0) targets.push(short);
+  let best = { s: 0, heard: alts[0] || "" };
+  alts.forEach(h => {
+    const c = canon(h), cw = c.split(" ");
+    targets.forEach(t => {
+      const tn = t.split(" ").length;
+      let s = sim(t, c);
+      for (let k = 0; k + tn <= cw.length; k++) s = Math.max(s, sim(t, cw.slice(k, k + tn).join(" ")));
+      if (s > best.s + 1e-9) best = { s, heard: h };
+    });
+  });
+  return best;
+}
+function noListen() {
+  G = null; stopListening();
+  $app.innerHTML = `<div class="gamebar"><button class="back" id="back">← Übersicht</button><div style="flex:1"></div><div class="starbox" id="stars">★ ${S.stars}</div></div>
+    <section class="panel result"><span class="big" aria-hidden="true">🎤</span><h2>Hier geht das leider nicht</h2>
+    <p style="margin:0;max-width:34em">Dieser Browser kann keine Sprache erkennen. „Sprich mit!“ funktioniert in <b>Chrome</b>, <b>Edge</b> und <b>Safari</b> (auf iPhone und iPad muss Siri eingeschaltet sein). Firefox kann es noch nicht.</p>
+    <div class="actions"><button class="btn ghost" id="home">Zur Übersicht</button></div></section>`;
+  $app.querySelector("#back").onclick = home;
+  $app.querySelector("#home").onclick = home;
+}
+const MIC_ERR = {
+  "not-allowed": "Das Mikrofon ist gesperrt. Erlaube den Zugriff aufs Mikrofon (meist über das Symbol links neben der Adresse) und versuch es nochmal.",
+  "service-not-allowed": "Die Spracherkennung ist ausgeschaltet. Auf iPhone und iPad muss dafür Siri eingeschaltet sein.",
+  "audio-capture": "Ich finde kein Mikrofon. Ist eins angeschlossen?",
+  "network": "Für die Spracherkennung braucht der Browser Internet. Bist du online?",
+  "no-speech": "Ich habe nichts gehört. Tippe aufs Mikrofon und sprich laut und deutlich."
+};
+function talkRound() {
+  const w = G.items[G.i];
+  const target = w.en.replace(/…/g, " ").replace(/\s+/g, " ").trim();
+  const en = S.dir === "en";
+  let tries = 0, finished = false;
+  frame(`<div class="prompt"><span class="emo">${w.emo}</span>
+      <span class="word" id="tw">${esc(en ? w.en : w.de)}</span>
+      <span class="hint" id="th">${en ? esc(w.de) : "Sag es auf Englisch!"}</span>
+      <button class="say" id="say">${en ? "🔊 Vorsprechen" : "💡 Hilfe: anhören"}</button></div>
+    <div class="actions"><button class="mic" id="mic" aria-label="Mikrofon: jetzt sprechen"><span aria-hidden="true">🎤</span></button></div>
+    <div class="micnote" id="note" aria-live="polite">Tippe aufs Mikrofon und sag es laut.</div>
+    <div class="heard" id="heard"></div>
+    <div class="feedback" id="fb" aria-live="polite"></div>
+    <div class="actions"><button class="btn ghost" id="skip">Überspringen</button><button class="btn" id="go" hidden>Weiter →</button></div>`);
+  const mic = $app.querySelector("#mic"), note = $app.querySelector("#note"), heard = $app.querySelector("#heard");
+  const fb = $app.querySelector("#fb"), go = $app.querySelector("#go"), skip = $app.querySelector("#skip");
+  const reveal = () => { if (!en) { $app.querySelector("#tw").textContent = w.en; $app.querySelector("#th").textContent = w.de; } };
+  $app.querySelector("#say").onclick = () => { stopListening(); mic.classList.remove("on"); reveal(); speak(target); };
+  go.onclick = next;
+  skip.onclick = () => { stopListening(); done(false); next(); };
+  const end = ok => {
+    finished = true; mic.disabled = true; skip.hidden = true; go.hidden = false; go.focus();
+    done(ok); reveal();
+  };
+  function showHeard(text) {
+    heard.innerHTML = "";
+    if (!text) return;
+    heard.append("Ich habe verstanden: ");
+    const b = document.createElement("b"); b.textContent = "„" + text + "“"; heard.append(b);
+  }
+  function onHeard(alts) {
+    const r = judgeSpeech(target, alts);
+    tries++;
+    showHeard(r.heard);
+    if (r.s >= 0.999) {
+      beep(true); grade(w, true); addStars(tries === 1 ? 2 : 1);
+      fb.className = "feedback ok"; fb.textContent = praise() + (tries === 1 ? "  +2 ★" : "  +1 ★");
+      note.textContent = "Der Computer hat dich genau verstanden.";
+      end(true);
+    } else if (tries >= 3) {
+      beep(false);
+      fb.className = "feedback no"; fb.textContent = "Kein Problem! Das üben wir später nochmal.";
+      note.textContent = "Hör gut zu, so klingt es:";
+      end(false); setTimeout(() => speak(target), 400);
+    } else {
+      beep(false);
+      fb.className = "feedback no";
+      fb.textContent = r.s >= 0.7 ? "Fast! Sag es nochmal ganz deutlich." : "Hmm, das klang anders. Hör es dir an und versuch's nochmal!";
+      note.textContent = "Noch " + (3 - tries) + (3 - tries === 1 ? " Versuch" : " Versuche") + ". Tippe aufs Mikrofon.";
+    }
+  }
+  mic.onclick = () => {
+    if (finished) return;
+    if (rec) { stopListening(); mic.classList.remove("on"); note.textContent = "Tippe aufs Mikrofon und sag es laut."; return; }
+    if (canSpeak) speechSynthesis.cancel();
+    const r = new SR();
+    r.lang = "en-GB"; r.interimResults = false; r.continuous = false; r.maxAlternatives = 5;
+    let got = false, failed = false;
+    r.onresult = e => {
+      got = true;
+      const res = e.results[e.results.length - 1], alts = [];
+      for (let k = 0; k < res.length; k++) alts.push(res[k].transcript);
+      onHeard(alts);
+    };
+    r.onerror = e => {
+      if (e.error === "aborted") return;
+      failed = true;
+      note.textContent = MIC_ERR[e.error] || "Das hat nicht geklappt. Versuch es nochmal.";
+    };
+    r.onend = () => {
+      if (rec === r) rec = null;
+      mic.classList.remove("on");
+      if (!got && !failed && !finished) note.textContent = MIC_ERR["no-speech"];
+    };
+    rec = r;
+    try { r.start(); } catch (e) { rec = null; note.textContent = "Das Mikrofon startet gerade nicht. Versuch es gleich nochmal."; return; }
+    mic.classList.add("on"); fb.textContent = ""; heard.innerHTML = "";
+    note.textContent = "Ich höre zu … sprich jetzt!";
+  };
+  if (en) setTimeout(() => { if (G && G.mode === "talk" && !rec) speak(target); }, 250);
+}
+
 /* ---------- Ende ---------- */
 function finish() {
+  stopListening();
   const ok = G.results.filter(Boolean).length;
   const bonus = ok === G.total ? 5 : ok >= G.total * .7 ? 3 : 1;
   addStars(bonus);
@@ -710,7 +891,7 @@ function finish() {
 
 /* ---------- Wortliste ---------- */
 function wordList() {
-  G = null;
+  G = null; stopListening();
   const cats = S.cat === "all" ? Object.keys(CATS) : [S.cat];
   const lvl = w => box(w) >= 3 ? "✅ sicher" : box(w) > 0 ? "🙂 " + box(w) + "/3" : "neu";
   $app.innerHTML = `<div class="gamebar"><button class="back" id="back">← Übersicht</button><div style="flex:1"></div><div class="starbox" id="stars">★ ${S.stars}</div></div>
