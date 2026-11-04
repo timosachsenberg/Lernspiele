@@ -8,7 +8,7 @@ Kleine Lernspiele für Grundschule und Unterstufe. Sie laufen im Browser, ohne A
 
 | Spiel | Klasse | Fach | Inhalt |
 |---|---|---|---|
-| [Ohne Bremse](spiele/ohne-bremse/) | 3 | Mathe | Kopfrechnen: Plus und Minus bis 100 und bis 1000, Einmaleins, Geteilt, gemischt. Der Zug hat keine Bremse; wer richtig rechnet, stellt die Weiche auf den richtigen Tunnel. Bei der falschen Weiche gibt es einen lustigen Unfall. |
+| [Ohne Bremse](spiele/ohne-bremse/) | 3 | Mathe | Kopfrechnen im Zahlenraum bis 100 (Plus und Minus, Einmaleins, Geteilt) und bis 1000 (Plus und Minus, Ergänzen, Mal und Geteilt mit Zehnern, Verdoppeln und Halbieren, Runden). Der Zug hat keine Bremse; wer richtig rechnet, stellt die Weiche auf den richtigen Tunnel. Bei der falschen Weiche gibt es einen von zwölf Unfällen, vom Heuhaufen bis zum UFO. |
 | [Vokabel-Jagd](spiele/vokabel-jagd/) | 5 | Englisch | Englisch-Vokabeln (Gymnasium, 1. Lernjahr) mit Karteikarten, Quiz, Hören, Sprechen (Aussprache-Check per Mikrofon), Paare finden, Buchstabieren und Wortliste. Sterne und Tier-Sticker als Belohnung; der Fortschritt bleibt im Browser des Geräts gespeichert. |
 
 ## Aufbau
